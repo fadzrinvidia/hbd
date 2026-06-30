@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>Hello Kitty's Birthday Adventure 💖</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select:none; user-select:none; }
+  html, body {
+    width:100%; height:100%; overflow:hidden;
+    background:#ffd6e8;
+    touch-action:none;
+    overscroll-behavior:none;
+    font-family:'Helvetica Neue', Arial, sans-serif;
+  }
+  #gameWrap {
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    background: linear-gradient(180deg,#ffe1ef,#ffc9e0);
+  }
+  #gameCanvas {
+    background:#bdeeff;
+    display:block;
+    width:100%;
+    height:100%;
+    max-width:480px;
+    margin:0 auto;
+    touch-action:none;
+    image-rendering: -webkit-optimize-contrast;
+  }
+  /* ---------- HUD ---------- */
+  #hud {
+    position:fixed; top:max(10px, env(safe-area-inset-top)); left:0; right:0;
+    display:flex; justify-content:center; pointer-events:none;
+    z-index:5;
+  }
+  #hudInner {
+    width:100%; max-width:480px;
+    display:flex; justify-content:space-between; padding:0 16px;
+  }
+  .hudBadge {
+    background:rgba(255,255,255,0.85);
+    border:2px solid #ff8fc0;
+    border-radius:20px;
+    padding:6px 14px;
+    font-size:14px;
+    font-weight:700;
+    color:#e0508a;
+    box-shadow:0 2px 6px rgba(0,0,0,0.15);
+  }
+  /* ---------- Controls ---------- */
+  #controls {
+    position:fixed; bottom:0; left:0; right:0;
+    display:flex; justify-content:center;
+    padding-bottom: max(18px, env(safe-area-inset-bottom));
+    z-index:10;
+    pointer-events:none;
+  }
+  #controlsInner {
+    width:100%; max-width:480px;
+    display:flex; justify-content:space-between; align-items:flex-end;
+    padding:0 22px;
+    pointer-events:none;
+  }
+  .dpad { display:flex; gap:14px; pointer-events:auto; }
+  .btn {
+    user-select:none;
+    -webkit-user-select:none;
+    display:flex; align-items:center; justify-content:center;
+    background: rgba(255, 130, 184, 0.55);
+    border: 3px solid rgba(255,255,255,0.9);
+    color:#fff;
+    font-size:30px;
+    font-weight:bold;
+    border-radius:50%;
+    width:64px; height:64px;
+    box-shadow: 0 4px 10px rgba(214,60,120,0.35);
+    backdrop-filter: blur(2px);
+    touch-action:none;
+    transition: transform 0.06s ease, background 0.06s ease;
+  }
+  .btn:active, .btn.active {
+    background: rgba(255, 90, 150, 0.85);
+    transform: scale(0.9);
+  }
+  #jumpBtn {
+    pointer-events:auto;
+    width:88px; height:88px;
+    font-size:18px;
+    border-radius:50%;
+    background: rgba(255, 105, 160, 0.6);
+    border:3px solid rgba(255,255,255,0.95);
+    box-shadow: 0 6px 14px rgba(214,60,120,0.4);
+  }
+  #jumpBtn:active, #jumpBtn.active {
+    background: rgba(255, 60, 130, 0.9);
+    transform: scale(0.92);
+  }
+  /* ---------- Win Overlay ---------- */
+  #winOverlay {
+    position:fixed; inset:0;
+    display:none;
+    align-items:center; justify-content:center;
+    background: radial-gradient(circle at 50% 30%, rgba(255,200,225,0.95), rgba(255,150,195,0.97));
+    z-index:50;
+    overflow:hidden;
+  }
+  #winOverlay.show { display:flex; }
+  .card {
+    position:relative;
+    width:86%;
+    max-width:380px;
+    background:#fff;
+    border-radius:24px;
+    border:6px solid #ff8fc0;
+    padding:28px 22px 26px;
+    text-align:center;
+    box-shadow: 0 20px 50px rgba(150,30,80,0.45);
+    transform: scale(0.4) translateY(60px);
+    opacity:0;
+    animation: popIn 0.7s cubic-bezier(.2,1.4,.4,1) forwards 0.15s;
+  }
+  @keyframes popIn {
+    to { transform: scale(1) translateY(0); opacity:1; }
+  }
+  .card h1 {
+    color:#e0508a;
+    font-size:24px;
+    margin-bottom:10px;
+    letter-spacing:0.5px;
+  }
+  .bowIcon { font-size:34px; display:block; margin-bottom:6px; }
+  .cardMsg {
+    font-size:16px;
+    line-height:1.5;
+    color:#7a3b56;
+    background:#fff0f6;
+    border:2px dashed #ffb7d9;
+    border-radius:14px;
+    padding:16px 14px;
+    margin:14px 0 18px;
+  }
+  .restartBtn {
+    background:#ff6fa6;
+    color:#fff;
+    border:none;
+    padding:12px 26px;
+    border-radius:30px;
+    font-size:15px;
+    font-weight:700;
+    box-shadow:0 6px 14px rgba(214,60,120,0.4);
+  }
+  .heart {
+    position:absolute;
+    bottom:-10%;
+    font-size:22px;
+    opacity:0.95;
+    animation: floatUp linear infinite;
+    pointer-events:none;
+  }
+  @keyframes floatUp {
+    0% { transform: translateY(0) translateX(0) rotate(0deg); opacity:1; }
+    100% { transform: translateY(-115vh) translateX(var(--drift)) rotate(360deg); opacity:0; }
+  }
+  .confetti {
+    position:absolute;
+    top:-5%;
+    width:8px; height:14px;
+    opacity:0.9;
+    animation: confettiFall linear infinite;
+    pointer-events:none;
+  }
+  @keyframes confettiFall {
+    0% { transform: translateY(0) rotate(0deg); }
+    100% { transform: translateY(115vh) rotate(540deg); }
+  }
+  #startOverlay {
+    position:fixed; inset:0;
+    display:flex; align-items:center; justify-content:center; flex-direction:column;
+    background: linear-gradient(180deg,#ffe1ef,#ffc9e0);
+    z-index:60;
+    text-align:center;
+    padding:30px;
+  }
+  #startOverlay h1 { color:#e0508a; font-size:26px; margin-bottom:10px; }
+  #startOverlay p { color:#7a3b56; font-size:15px; margin-bottom:24px; max-width:300px; line-height:1.5; }
+  #startBtn {
+    background:#ff6fa6; color:#fff; border:none; padding:14px 34px;
+    border-radius:30px; font-size:17px; font-weight:700;
+    box-shadow:0 6px 16px rgba(214,60,120,0.4);
+  }
+  .kittyDemo { font-size:60px; margin-bottom:8px; }
+</style>
+</head>
+<body>
+
+<div id="gameWrap">
+  <canvas id="gameCanvas"></canvas>
+</div>
+
+<div id="hud">
+  <div id="hudInner">
+    <div class="hudBadge" id="livesBadge">💖 x3</div>
+    <div class="hudBadge" id="progressBadge">Start</div>
+  </div>
+</div>
+
+<div id="controls">
+  <div id="controlsInner">
+    <div class="dpad">
+      <div class="btn" id="leftBtn">◀</div>
+      <div class="btn" id="rightBtn">▶</div>
+    </div>
+    <div class="btn" id="jumpBtn">JUMP</div>
+  </div>
+</div>
+
+<div id="winOverlay">
+  <div class="card" id="winCard">
+    <span class="bowIcon">🎀</span>
+    <h1>Happy Birthday!</h1>
+    <div class="cardMsg">[INSERT_YOUR_HEARTFELT_MESSAGE_HERE]</div>
+    <button class="restartBtn" id="restartBtn">Play Again 🌸</button>
+  </div>
+</div>
+
+<div id="startOverlay">
+  <div class="kittyDemo">🎀🐱</div>
+  <h1>Hello Kitty's<br>Birthday Adventure</h1>
+  <p>Help Hello Kitty run and jump across the world to reach her birthday surprise! Use the buttons below to move and jump.</p>
+  <button id="startBtn">Start Game 💗</button>
+</div>
+
+<script>
+(function(){
+  "use strict";
+
+  // Prevent iOS double-tap zoom / pinch / scroll bounce
+  document.addEventListener('gesturestart', e => e.preventDefault());
+  document.addEventListener('touchmove', e => { e.preventDefault(); }, { passive:false });
+  let lastTouchEnd = 0;
+  document.addEventListener('touchend', function(e){
+    const now = Date.now();
+    if (now - lastTouchEnd <= 300) e.preventDefault();
+    lastTouchEnd = now;
+  }, false);
+
+  // ---------------- Canvas Setup ----------------
+  const canvas = document.getElementById('gameCanvas');
+  const ctx = canvas.getContext('2d');
+
+  // Internal logical resolution (portrait)
+  const VW = 400, VH = 700;
+  function resizeCanvas(){
+    const wrap = document.getElementById('gameWrap');
+    const rect = wrap.getBoundingClientRect();
+    const ratio = window.devicePixelRatio || 1;
+    canvas.width = VW * ratio;
+    canvas.height = VH * ratio;
+    ctx.setTransform(ratio,0,0,ratio,0,0);
+  }
+  window.addEventListener('resize', resizeCanvas);
+  resizeCanvas();
+
+  // ---------------- World / Level Data ----------------
+  const GROUND_Y = 560;
+  const GRAVITY = 0.62;
+  const JUMP_FORCE = -13.2;
+  const MOVE_SPEED = 3.1;
+  const WORLD_WIDTH = 5200;
+
+  // Ground segments {x1, x2} - gaps between segments are pits
+  const groundSegments = [
+    {x1:0, x2:520},
+    {x1:600, x2:980},
+    {x1:1080, x2:1500},
+    {x1:1600, x2:1950},
+    {x1:2050, x2:2500},
+    {x1:2600, x2:3050},
+    {x1:3150, x2:3550},
+    {x1:3650, x2:4050},
+    {x1:4150, x2:4650},
+    {x1:4750, x2:5200}
+  ];
+
+  // Floating platforms {x, y, w, h}
+  const platforms = [
+    {x:760, y:440, w:120, h:24},
+    {x:1230, y:400, w:110, h:24},
+    {x:1750, y:430, w:100, h:24},
+    {x:2250, y:380, w:120, h:24},
+    {x:2780, y:420, w:110, h:24},
+    {x:3320, y:390, w:110, h:24},
+    {x:3820, y:430, w:120, h:24},
+    {x:4350, y:400, w:110, h:24}
+  ];
+
+  // Spikes {x, y, w, h} - sit on ground top
+  const spikes = [
+    {x:560, y:GROUND_Y-26, w:36, h:26},
+    {x:1030, y:GROUND_Y-26, w:30, h:26},
+    {x:2000, y:GROUND_Y-26, w:36, h:26},
+    {x:3100, y:GROUND_Y-26, w:30, h:26},
+    {x:3600, y:GROUND_Y-26, w:36, h:26},
+    {x:4700, y:GROUND_Y-26, w:36, h:26}
+  ];
+
+  // Picture frames floating in the level {x, y, text}
+  const frames = [
+    {x:300, y:300, text:"Picture of the\nprettiest girl 💖"},
+    {x:900, y:260, text:"Cute memory\ngoes here ✨"},
+    {x:1500, y:300, text:"Best GF in the\nworld 🌸"},
+    {x:2200, y:250, text:"Our favorite\nday together 🎀"},
+    {x:2900, y:300, text:"You make me\nsmile 😻"},
+    {x:3600, y:260, text:"Forever my\nfavorite person 💕"},
+    {x:4300, y:300, text:"To many more\nbirthdays 🎂"}
+  ];
+
+  // Clouds (decorative)
+  const clouds = [];
+  for (let i=0;i<14;i++){
+    clouds.push({
+      x: Math.random()*WORLD_WIDTH,
+      y: 40 + Math.random()*220,
+      s: 0.6 + Math.random()*0.9,
+      speed: 0.15 + Math.random()*0.2
+    });
+  }
+
+  const FLAG_X = WORLD_WIDTH - 140;
+
+  // ---------------- Player ----------------
+  const player = {
+    x: 60, y: GROUND_Y - 40, w: 34, h: 40,
+    vx:0, vy:0, onGround:false, facing:1,
+    runFrame:0, runTimer:0
+  };
+  let checkpointX = player.x;
+  let lives = 3;
+  let gameWon = false;
+  let gameStarted = false;
+
+  // ---------------- Input ----------------
+  const input = { left:false, right:false, jump:false };
+
+  function bindBtn(el, key){
+    const set = (v) => {
+      input[key] = v;
+      el.classList.toggle('active', v);
+    };
+    el.addEventListener('touchstart', e => { e.preventDefault(); set(true); }, {passive:false});
+    el.addEventListener('touchend', e => { e.preventDefault(); set(false); }, {passive:false});
+    el.addEventListener('touchcancel', e => { e.preventDefault(); set(false); }, {passive:false});
+    el.addEventListener('mousedown', e => { e.preventDefault(); set(true); });
+    el.addEventListener('mouseup', e => { e.preventDefault(); set(false); });
+    el.addEventListener('mouseleave', () => set(false));
+  }
+  bindBtn(document.getElementById('leftBtn'), 'left');
+  bindBtn(document.getElementById('rightBtn'), 'right');
+  bindBtn(document.getElementById('jumpBtn'), 'jump');
+
+  // Keyboard for desktop testing
+  window.addEventListener('keydown', e=>{
+    if (e.code === 'ArrowLeft') input.left = true;
+    if (e.code === 'ArrowRight') input.right = true;
+    if (e.code === 'Space' || e.code === 'ArrowUp') input.jump = true;
+  });
+  window.addEventListener('keyup', e=>{
+    if (e.code === 'ArrowLeft') input.left = false;
+    if (e.code === 'ArrowRight') input.right = false;
+    if (e.code === 'Space' || e.code === 'ArrowUp') input.jump = false;
+  });
+
+  // ---------------- Camera ----------------
+  let camX = 0;
+
+  // ---------------- Collision Helpers ----------------
+  function isOverGap(x){
+    for (const seg of groundSegments){
+      if (x >= seg.x1 && x <= seg.x2) return false;
+    }
+    return true;
+  }
+  function groundTopAt(x){
+    // returns GROUND_Y if solid ground under x, else null
+    for (const seg of groundSegments){
+      if (x >= seg.x1 && x <= seg.x2) return GROUND_Y;
+    }
+    return null;
+  }
+
+  function resetPlayer(toCheckpoint){
+    player.x = toCheckpoint ? checkpointX : 60;
+    player.y = GROUND_Y - player.h - 4;
+    player.vx = 0; player.vy = 0;
+  }
+
+  function loseLife(){
+    lives--;
+    updateHUD();
+    if (lives <= 0){
+      lives = 3;
+      checkpointX = 60;
+      resetPlayer(false);
+    } else {
+      resetPlayer(true);
+    }
+  }
+
+  // ---------------- Update ----------------
+  function update(){
+    if (gameWon || !gameStarted) return;
+
+    // Horizontal movement
+    if (input.left){ player.vx = -MOVE_SPEED; player.facing = -1; }
+    else if (input.right){ player.vx = MOVE_SPEED; player.facing = 1; }
+    else { player.vx = 0; }
+
+    // Jump
+    if (input.jump && player.onGround){
+      player.vy = JUMP_FORCE;
+      player.onGround = false;
+    }
+
+    // Apply gravity
+    player.vy += GRAVITY;
+    if (player.vy > 16) player.vy = 16;
+
+    player.x += player.vx;
+    player.y += player.vy;
+
+    if (player.x < 10) player.x = 10;
+    if (player.x > WORLD_WIDTH - player.w - 10) player.x = WORLD_WIDTH - player.w - 10;
+
+    // Ground collision
+    player.onGround = false;
+    const feetX = player.x + player.w/2;
+    const gTop = groundTopAt(feetX);
+    if (gTop !== null){
+      if (player.y + player.h >= gTop && player.vy >= 0){
+        player.y = gTop - player.h;
+        player.vy = 0;
+        player.onGround = true;
+      }
+    }
+
+    // Platform collisions
+    for (const p of platforms){
+      if (player.x + player.w*0.7 > p.x && player.x + player.w*0.3 < p.x + p.w){
+        const prevBottom = player.y + player.h - player.vy;
+        if (prevBottom <= p.y + 2 && player.y + player.h >= p.y && player.vy >= 0){
+          player.y = p.y - player.h;
+          player.vy = 0;
+          player.onGround = true;
+        }
+      }
+    }
+
+    // Fell into pit
+    if (player.y > GROUND_Y + 150){
+      loseLife();
+    }
+
+    // Spike collision
+    for (const s of spikes){
+      if (player.x + player.w - 6 > s.x && player.x + 6 < s.x + s.w &&
+          player.y + player.h - 4 > s.y && player.y + 6 < s.y + s.h){
+        loseLife();
+        break;
+      }
+    }
+
+    // Update checkpoint when grounded and on solid ground past current checkpoint
+    if (player.onGround && gTop !== null && player.x > checkpointX){
+      checkpointX = Math.max(checkpointX, Math.min(player.x, WORLD_WIDTH));
+    }
+
+    // Run animation timer
+    if (player.vx !== 0 && player.onGround){
+      player.runTimer++;
+      if (player.runTimer > 6){ player.runTimer = 0; player.runFrame = (player.runFrame+1)%2; }
+    } else {
+      player.runFrame = 0;
+    }
+
+    // Win condition
+    if (player.x + player.w >= FLAG_X){
+      triggerWin();
+    }
+
+    // Camera follow
+    const targetCam = player.x - VW/2.6;
+    camX += (targetCam - camX) * 0.18;
+    camX = Math.max(0, Math.min(camX, WORLD_WIDTH - VW));
+
+    // Update HUD progress
+    const pct = Math.min(100, Math.round((player.x / FLAG_X) * 100));
+    document.getElementById('progressBadge').textContent = pct >= 100 ? "Arrived! 🎉" : (pct + "% there");
+  }
+
+  function updateHUD(){
+    document.getElementById('livesBadge').textContent = "💖 x" + lives;
+  }
+
+  // ---------------- Drawing ----------------
+  function drawBackground(){
+    // sky gradient
+    const grad = ctx.createLinearGradient(0,0,0,VH);
+    grad.addColorStop(0, "#bdeeff");
+    grad.addColorStop(0.55, "#d8f3ff");
+    grad.addColorStop(1, "#fff0f7");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,VW,VH);
+
+    // sun
+    ctx.fillStyle = "#fff7b0";
+    ctx.beginPath();
+    ctx.arc(VW-60, 70, 34, 0, Math.PI*2);
+    ctx.fill();
+
+    // clouds (parallax)
+    ctx.save();
+    for (const c of clouds){
+      const sx = c.x - camX*c.speed;
+      const wrapped = ((sx % (WORLD_WIDTH+400)) + (WORLD_WIDTH+400)) % (WORLD_WIDTH+400) - 200;
+      if (wrapped > -120 && wrapped < VW+120){
+        drawCloud(wrapped, c.y, c.s);
+      }
+    }
+    ctx.restore();
+
+    // distant hills
+    ctx.fillStyle = "#ffd3e8";
+    for (let i=-1;i<6;i++){
+      const hx = i*260 - (camX*0.3 % 260);
+      ctx.beginPath();
+      ctx.ellipse(hx, GROUND_Y+30, 180, 90, 0, Math.PI, 2*Math.PI);
+      ctx.fill();
+    }
+  }
+
+  function drawCloud(x,y,s){
+    ctx.fillStyle = "rgba(255,255,255,0.9)";
+    ctx.beginPath();
+    ctx.ellipse(x, y, 26*s, 16*s, 0, 0, Math.PI*2);
+    ctx.ellipse(x+22*s, y+4*s, 20*s, 14*s, 0, 0, Math.PI*2);
+    ctx.ellipse(x-22*s, y+4*s, 18*s, 13*s, 0, 0, Math.PI*2);
+    ctx.fill();
+  }
+
+  function drawGround(){
+    for (const seg of groundSegments){
+      const x1 = seg.x1 - camX, x2 = seg.x2 - camX;
+      if (x2 < -20 || x1 > VW+20) continue;
+      const w = x2 - x1;
+      // grass top
+      ctx.fillStyle = "#ff9ec7";
+      ctx.fillRect(x1, GROUND_Y, w, VH - GROUND_Y);
+      ctx.fillStyle = "#ffc1dd";
+      ctx.fillRect(x1, GROUND_Y, w, 14);
+      // cute scalloped edge
+      ctx.fillStyle = "#fff";
+      for (let bx = x1; bx < x2; bx += 26){
+        ctx.beginPath();
+        ctx.arc(bx+13, GROUND_Y+14, 8, 0, Math.PI, false);
+        ctx.fill();
+      }
+      // little hearts pattern on ground
+      ctx.fillStyle = "rgba(255,255,255,0.55)";
+      for (let bx = x1+20; bx < x2; bx += 60){
+        drawHeart(bx, GROUND_Y+40, 6);
+      }
+    }
+  }
+
+  function drawHeart(x,y,size){
+    ctx.save();
+    ctx.translate(x,y);
+    ctx.beginPath();
+    const s = size;
+    ctx.moveTo(0, s*0.3);
+    ctx.bezierCurveTo(-s, -s*0.6, -s*1.6, s*0.3, 0, s*1.3);
+    ctx.bezierCurveTo(s*1.6, s*0.3, s, -s*0.6, 0, s*0.3);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  function drawPlatforms(){
+    for (const p of platforms){
+      const x = p.x - camX;
+      if (x + p.w < -20 || x > VW+20) continue;
+      ctx.fillStyle = "#ffffff";
+      roundRect(ctx, x, p.y, p.w, p.h, 8);
+      ctx.fill();
+      ctx.strokeStyle = "#ff8fc0";
+      ctx.lineWidth = 3;
+      roundRect(ctx, x, p.y, p.w, p.h, 8);
+      ctx.stroke();
+      ctx.fillStyle = "#ff8fc0";
+      drawHeart(x + p.w/2, p.y + p.h/2, 6);
+    }
+  }
+
+  function roundRect(ctx,x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawSpikes(){
+    for (const s of spikes){
+      const x = s.x - camX;
+      if (x + s.w < -20 || x > VW+20) continue;
+      ctx.fillStyle = "#ff5c93";
+      const teeth = 3;
+      const tw = s.w/teeth;
+      ctx.beginPath();
+      for (let i=0;i<teeth;i++){
+        ctx.moveTo(x+i*tw, s.y+s.h);
+        ctx.lineTo(x+i*tw+tw/2, s.y);
+        ctx.lineTo(x+i*tw+tw, s.y+s.h);
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle="#fff";
+      for (let i=0;i<teeth;i++){
+        drawHeart(x+i*tw+tw/2, s.y+s.h-6, 3);
+      }
+    }
+  }
+
+  function drawFrames(){
+    ctx.font = "11px Helvetica, Arial";
+    for (const f of frames){
+      const x = f.x - camX;
+      if (x < -140 || x > VW+140) continue;
+      const w = 110, h = 95;
+      // gentle float
+      const floatY = f.y + Math.sin((Date.now()/700) + f.x) * 6;
+      // frame shadow
+      ctx.fillStyle = "rgba(150,60,100,0.18)";
+      roundRect(ctx, x-w/2+4, floatY-h/2+6, w, h, 10);
+      ctx.fill();
+      // frame body
+      ctx.fillStyle = "#fff";
+      roundRect(ctx, x-w/2, floatY-h/2, w, h, 10);
+      ctx.fill();
+      ctx.lineWidth = 5;
+      ctx.strokeStyle = "#ff8fc0";
+      roundRect(ctx, x-w/2, floatY-h/2, w, h, 10);
+      ctx.stroke();
+      // inner picture area
+      ctx.fillStyle = "#ffe3f0";
+      roundRect(ctx, x-w/2+8, floatY-h/2+8, w-16, h-34, 6);
+      ctx.fill();
+      // placeholder icon
+      ctx.fillStyle = "#ff8fc0";
+      drawHeart(x, floatY-h/2+8+ (h-34)/2, 14);
+      // corner hearts
+      ctx.fillStyle = "#ff5c93";
+      drawHeart(x-w/2+8, floatY-h/2+8, 4);
+      drawHeart(x+w/2-8, floatY-h/2+8, 4);
+      // text
+      ctx.fillStyle = "#a3406b";
+      ctx.textAlign = "center";
+      const lines = f.text.split("\n");
+      lines.forEach((line, i)=>{
+        ctx.fillText(line, x, floatY + h/2 - 14 + i*12);
+      });
+    }
+  }
+
+  function drawFlag(){
+    const x = FLAG_X - camX;
+    if (x < -60 || x > VW+60) return;
+    // pole
+    ctx.strokeStyle = "#ff8fc0";
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND_Y);
+    ctx.lineTo(x, GROUND_Y - 180);
+    ctx.stroke();
+    // heart flag top
+    ctx.fillStyle = "#ff5c93";
+    drawHeart(x, GROUND_Y - 190, 22);
+    // ribbon flag
+    ctx.fillStyle = "#fff";
+    ctx.beginPath();
+    ctx.moveTo(x, GROUND_Y-170);
+    ctx.lineTo(x+60, GROUND_Y-155);
+    ctx.lineTo(x, GROUND_Y-138);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = "#ff8fc0";
+    ctx.lineWidth=2;
+    ctx.stroke();
+  }
+
+  // Hello-Kitty-style character drawing
+  function drawPlayer(){
+    const x = player.x - camX;
+    const y = player.y;
+    const bob = player.onGround ? (player.runFrame===1 ? -2 : 0) : -3;
+
+    ctx.save();
+    ctx.translate(x + player.w/2, y + player.h/2 + bob);
+    if (player.facing < 0) ctx.scale(-1,1);
+
+    // body
+    ctx.fillStyle = "#ffffff";
+    roundRect(ctx, -14, 2, 28, 18, 8);
+    ctx.fill();
+    ctx.strokeStyle = "#e9b8cc";
+    ctx.lineWidth = 1.4;
+    roundRect(ctx, -14, 2, 28, 18, 8);
+    ctx.stroke();
+
+    // overalls hint (pink)
+    ctx.fillStyle = "#ffb6d5";
+    roundRect(ctx, -14, 9, 28, 11, 6);
+    ctx.fill();
+
+    // legs
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(-9, 18, 7, 8);
+    ctx.fillRect(3, 18, 7, 8);
+
+    // arms
+    ctx.fillStyle = "#fff";
+    ctx.beginPath(); ctx.ellipse(-15, 8, 5, 4, 0.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(15, 8, 5, 4, -0.4, 0, Math.PI*2); ctx.fill();
+
+    // head
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.ellipse(0, -10, 16, 14, 0, 0, Math.PI*2);
+    ctx.fill();
+    ctx.strokeStyle = "#e9b8cc";
+    ctx.lineWidth = 1.4;
+    ctx.stroke();
+
+    // ears
+    ctx.fillStyle = "#ffffff";
+    ctx.beginPath();
+    ctx.moveTo(-13,-19); ctx.lineTo(-20,-30); ctx.lineTo(-6,-23); ctx.closePath(); ctx.fill();
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(13,-19); ctx.lineTo(20,-30); ctx.lineTo(6,-23); ctx.closePath(); ctx.fill();
+    ctx.stroke();
+
+    // whiskers
+    ctx.strokeStyle = "#d98fae";
+    ctx.lineWidth = 1;
+    [-1,1].forEach(side=>{
+      for (let i=0;i<3;i++){
+        ctx.beginPath();
+        ctx.moveTo(side*6, -8 + i*3);
+        ctx.lineTo(side*22, -11 + i*4);
+        ctx.stroke();
+      }
+    });
+
+    // eyes
+    ctx.fillStyle = "#2b2b2b";
+    ctx.beginPath(); ctx.ellipse(-6,-10,1.8,2.4,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6,-10,1.8,2.4,0,0,Math.PI*2); ctx.fill();
+
+    // nose
+    ctx.fillStyle = "#ffd34d";
+    ctx.beginPath();
+    ctx.moveTo(0,-6); ctx.lineTo(-2,-3); ctx.lineTo(2,-3); ctx.closePath();
+    ctx.fill();
+
+    // bow
+    ctx.fillStyle = "#ff4d7d";
+    ctx.beginPath();
+    ctx.moveTo(9,-22); ctx.lineTo(18,-27); ctx.lineTo(18,-15); ctx.closePath(); ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(9,-22); ctx.lineTo(0,-27); ctx.lineTo(0,-15); ctx.closePath(); ctx.fill();
+    ctx.fillStyle = "#ff8aa8";
+    ctx.beginPath();
+    ctx.arc(9,-22,3,0,Math.PI*2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  function draw(){
+    drawBackground();
+    drawFrames();
+    drawGround();
+    drawPlatforms();
+    drawSpikes();
+    drawFlag();
+    drawPlayer();
+  }
+
+  // ---------------- Win sequence ----------------
+  function triggerWin(){
+    if (gameWon) return;
+    gameWon = true;
+    spawnHearts();
+    spawnConfetti();
+    document.getElementById('winOverlay').classList.add('show');
+  }
+
+  function spawnHearts(){
+    const overlay = document.getElementById('winOverlay');
+    const emojis = ["💖","💗","🎀","✨","💕"];
+    for (let i=0;i<26;i++){
+      const h = document.createElement('div');
+      h.className = 'heart';
+      h.textContent = emojis[Math.floor(Math.random()*emojis.length)];
+      h.style.left = (Math.random()*100) + "%";
+      h.style.setProperty('--drift', (Math.random()*120-60)+"px");
+      h.style.animationDuration = (4 + Math.random()*4) + "s";
+      h.style.animationDelay = (Math.random()*3) + "s";
+      h.style.fontSize = (16 + Math.random()*16) + "px";
+      overlay.appendChild(h);
+    }
+  }
+  function spawnConfetti(){
+    const overlay = document.getElementById('winOverlay');
+    const colors = ["#ff8fc0","#ffd166","#ff5c93","#ffffff","#bdeeff"];
+    for (let i=0;i<40;i++){
+      const c = document.createElement('div');
+      c.className = 'confetti';
+      c.style.left = (Math.random()*100) + "%";
+      c.style.background = colors[Math.floor(Math.random()*colors.length)];
+      c.style.animationDuration = (3 + Math.random()*3) + "s";
+      c.style.animationDelay = (Math.random()*2) + "s";
+      overlay.appendChild(c);
+    }
+  }
+
+  document.getElementById('restartBtn').addEventListener('click', ()=>{
+    location.reload();
+  });
+
+  document.getElementById('startBtn').addEventListener('click', ()=>{
+    document.getElementById('startOverlay').style.display = 'none';
+    gameStarted = true;
+  });
+
+  updateHUD();
+
+  // ---------------- Game Loop ----------------
+  function loop(){
+    update();
+    draw();
+    requestAnimationFrame(loop);
+  }
+  loop();
+
+})();
+</script>
+</body>
+</html>
