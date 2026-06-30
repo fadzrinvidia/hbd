@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, minimum-scale=1, user-scalable=no, viewport-fit=cover">
-<title>Hello Kitty's Birthday Adventure 💖</title>
+<title>Game for noobie 💖</title>
 <style>
   * { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; -webkit-user-select:none; user-select:none; }
   html, body {
@@ -218,16 +218,16 @@
 <div id="winOverlay">
   <div class="card" id="winCard">
     <span class="bowIcon">🎀</span>
-    <h1>Happy Birthday!</h1>
-    <div class="cardMsg">[INSERT_YOUR_HEARTFELT_MESSAGE_HERE]</div>
+    <h1>HAPPY BIRTHDAY BABYYYYY</h1>
+    <div class="cardMsg">Happy Birthday Rabiyatul Iman, you deserve all the wishes you get and way more. I hope to be able to celebrate more birthdays with you hihihi lopyumuahmuah - fadzrinubi</div>
     <button class="restartBtn" id="restartBtn">Play Again 🌸</button>
   </div>
 </div>
 
 <div id="startOverlay">
   <div class="kittyDemo">🎀🐱</div>
-  <h1>Hello Kitty's<br>Birthday Adventure</h1>
-  <p>Help Hello Kitty run and jump across the world to reach her birthday surprise! Use the buttons below to move and jump.</p>
+  <h1>Hello Kitty's<br>Adventure</h1>
+  <p>Help Hello Kitty run and jump across the world to reach her end goal! Use the buttons below to move and jump.</p>
   <button id="startBtn">Start Game 💗</button>
 </div>
 
@@ -305,16 +305,28 @@
     {x:4700, y:GROUND_Y-26, w:36, h:26}
   ];
 
-  // Picture frames floating in the level {x, y, text}
+  // Picture frames floating in the level {x, y, text, img}
+  // PLACEHOLDER IMAGES: put your 7 photos in an "images" folder next to this
+  // HTML file, named exactly frame1.jpg ... frame7.jpg (jpg/png/jpeg all fine,
+  // just update the extension below if needed).
   const frames = [
-    {x:300, y:300, text:"Picture of the\nprettiest girl 💖"},
-    {x:900, y:260, text:"Cute memory\ngoes here ✨"},
-    {x:1500, y:300, text:"Best GF in the\nworld 🌸"},
-    {x:2200, y:250, text:"Our favorite\nday together 🎀"},
-    {x:2900, y:300, text:"You make me\nsmile 😻"},
-    {x:3600, y:260, text:"Forever my\nfavorite person 💕"},
-    {x:4300, y:300, text:"To many more\nbirthdays 🎂"}
+    {x:300, y:300, text:"Bole la nubi skit\nnnti kalah jg tu 💖", img:"images/frame1.jpg"},
+    {x:900, y:260, text:"cantikka gf aku\n???? ✨", img:"images/frame2.jpg"},
+    {x:1500, y:300, text:"OI\nCANRIK KAN DIA? 🌸", img:"images/frame3.jpg"},
+    {x:2200, y:250, text:"Skit lagi baby\nmau habis sd 🎀", img:"images/frame4.jpg"},
+    {x:2900, y:300, text:"U CAN\n DO ITTT 😻", img:"images/frame5.jpg"},
+    {x:3600, y:260, text:"My\ngoat 💕", img:"images/frame6.jpg"},
+    {x:4300, y:300, text:"yay\nmau habis sd🎂", img:"images/frame7.jpg"}
   ];
+
+  // Preload frame images
+  frames.forEach(f => {
+    const im = new Image();
+    im.src = f.img;
+    f.imgEl = im;
+    f.imgLoaded = false;
+    im.onload = () => { f.imgLoaded = true; };
+  });
 
   // Clouds (decorative)
   const clouds = [];
@@ -496,6 +508,8 @@
     // Update HUD progress
     const pct = Math.min(100, Math.round((player.x / FLAG_X) * 100));
     document.getElementById('progressBadge').textContent = pct >= 100 ? "Arrived! 🎉" : (pct + "% there");
+
+    updateHeartTrail();
   }
 
   function updateHUD(){
@@ -654,12 +668,32 @@
       roundRect(ctx, x-w/2, floatY-h/2, w, h, 10);
       ctx.stroke();
       // inner picture area
+      const picX = x-w/2+8, picY = floatY-h/2+8, picW = w-16, picH = h-34;
       ctx.fillStyle = "#ffe3f0";
-      roundRect(ctx, x-w/2+8, floatY-h/2+8, w-16, h-34, 6);
+      roundRect(ctx, picX, picY, picW, picH, 6);
       ctx.fill();
-      // placeholder icon
-      ctx.fillStyle = "#ff8fc0";
-      drawHeart(x, floatY-h/2+8+ (h-34)/2, 14);
+
+      if (f.imgLoaded){
+        // draw photo clipped to rounded rect, cover-fit
+        ctx.save();
+        roundRect(ctx, picX, picY, picW, picH, 6);
+        ctx.clip();
+        const iw = f.imgEl.naturalWidth, ih = f.imgEl.naturalHeight;
+        const scale = Math.max(picW/iw, picH/ih);
+        const dw = iw*scale, dh = ih*scale;
+        const dx = picX + (picW-dw)/2, dy = picY + (picH-dh)/2;
+        ctx.drawImage(f.imgEl, dx, dy, dw, dh);
+        ctx.restore();
+        ctx.lineWidth = 1;
+        ctx.strokeStyle = "#ff8fc0";
+        roundRect(ctx, picX, picY, picW, picH, 6);
+        ctx.stroke();
+      } else {
+        // placeholder icon until image loads / if missing
+        ctx.fillStyle = "#ff8fc0";
+        drawHeart(x, picY + picH/2, 14);
+      }
+
       // corner hearts
       ctx.fillStyle = "#ff5c93";
       drawHeart(x-w/2+8, floatY-h/2+8, 4);
@@ -700,7 +734,7 @@
     ctx.stroke();
   }
 
-  // Hello-Kitty-style character drawing
+  // Hello-Kitty-style character drawing (rounder, flatter, no-mouth stylization)
   function drawPlayer(){
     const x = player.x - camX;
     const y = player.y;
@@ -712,81 +746,125 @@
 
     // body
     ctx.fillStyle = "#ffffff";
-    roundRect(ctx, -14, 2, 28, 18, 8);
+    roundRect(ctx, -13, 4, 26, 17, 8);
     ctx.fill();
     ctx.strokeStyle = "#e9b8cc";
     ctx.lineWidth = 1.4;
-    roundRect(ctx, -14, 2, 28, 18, 8);
+    roundRect(ctx, -13, 4, 26, 17, 8);
     ctx.stroke();
 
     // overalls hint (pink)
     ctx.fillStyle = "#ffb6d5";
-    roundRect(ctx, -14, 9, 28, 11, 6);
+    roundRect(ctx, -13, 10, 26, 11, 6);
     ctx.fill();
 
     // legs
     ctx.fillStyle = "#fff";
-    ctx.fillRect(-9, 18, 7, 8);
-    ctx.fillRect(3, 18, 7, 8);
+    ctx.fillRect(-9, 19, 7, 8);
+    ctx.fillRect(2, 19, 7, 8);
 
     // arms
     ctx.fillStyle = "#fff";
-    ctx.beginPath(); ctx.ellipse(-15, 8, 5, 4, 0.4, 0, Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(15, 8, 5, 4, -0.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-14, 10, 5, 4, 0.4, 0, Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(14, 10, 5, 4, -0.4, 0, Math.PI*2); ctx.fill();
 
-    // head
+    // head - rounder, flatter front
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.ellipse(0, -10, 16, 14, 0, 0, Math.PI*2);
+    ctx.ellipse(0, -12, 17, 15.5, 0, 0, Math.PI*2);
     ctx.fill();
     ctx.strokeStyle = "#e9b8cc";
     ctx.lineWidth = 1.4;
     ctx.stroke();
 
-    // ears
+    // ears - rounded ovals tucked at top corners
     ctx.fillStyle = "#ffffff";
     ctx.beginPath();
-    ctx.moveTo(-13,-19); ctx.lineTo(-20,-30); ctx.lineTo(-6,-23); ctx.closePath(); ctx.fill();
-    ctx.stroke();
+    ctx.ellipse(-13, -25, 6, 8, -0.35, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
     ctx.beginPath();
-    ctx.moveTo(13,-19); ctx.lineTo(20,-30); ctx.lineTo(6,-23); ctx.closePath(); ctx.fill();
-    ctx.stroke();
+    ctx.ellipse(13, -25, 6, 8, 0.35, 0, Math.PI*2);
+    ctx.fill(); ctx.stroke();
 
-    // whiskers
+    // whiskers - thin, evenly spaced, anchored near the nose
     ctx.strokeStyle = "#d98fae";
-    ctx.lineWidth = 1;
+    ctx.lineWidth = 0.9;
     [-1,1].forEach(side=>{
       for (let i=0;i<3;i++){
         ctx.beginPath();
-        ctx.moveTo(side*6, -8 + i*3);
-        ctx.lineTo(side*22, -11 + i*4);
+        ctx.moveTo(side*5, -10 + i*3.4);
+        ctx.lineTo(side*23, -13 + i*4.2);
         ctx.stroke();
       }
     });
 
-    // eyes
+    // eyes - small dots
     ctx.fillStyle = "#2b2b2b";
-    ctx.beginPath(); ctx.ellipse(-6,-10,1.8,2.4,0,0,Math.PI*2); ctx.fill();
-    ctx.beginPath(); ctx.ellipse(6,-10,1.8,2.4,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(-6.5,-12,1.7,2.3,0,0,Math.PI*2); ctx.fill();
+    ctx.beginPath(); ctx.ellipse(6.5,-12,1.7,2.3,0,0,Math.PI*2); ctx.fill();
 
-    // nose
+    // nose - small triangle, just under and between the eyes
     ctx.fillStyle = "#ffd34d";
     ctx.beginPath();
-    ctx.moveTo(0,-6); ctx.lineTo(-2,-3); ctx.lineTo(2,-3); ctx.closePath();
+    ctx.moveTo(0,-7); ctx.lineTo(-2.1,-4); ctx.lineTo(2.1,-4); ctx.closePath();
     ctx.fill();
+    // (no mouth - classic no-mouth look)
 
-    // bow
+    // bow - bigger, on her left ear
+    ctx.save();
+    ctx.translate(13, -27);
+    ctx.rotate(-0.18);
     ctx.fillStyle = "#ff4d7d";
     ctx.beginPath();
-    ctx.moveTo(9,-22); ctx.lineTo(18,-27); ctx.lineTo(18,-15); ctx.closePath(); ctx.fill();
+    ctx.moveTo(0,0); ctx.lineTo(11,-6); ctx.lineTo(11,6); ctx.closePath(); ctx.fill();
     ctx.beginPath();
-    ctx.moveTo(9,-22); ctx.lineTo(0,-27); ctx.lineTo(0,-15); ctx.closePath(); ctx.fill();
+    ctx.moveTo(0,0); ctx.lineTo(-11,-6); ctx.lineTo(-11,6); ctx.closePath(); ctx.fill();
     ctx.fillStyle = "#ff8aa8";
     ctx.beginPath();
-    ctx.arc(9,-22,3,0,Math.PI*2);
+    ctx.arc(0,0,3.4,0,Math.PI*2);
     ctx.fill();
+    ctx.restore();
 
     ctx.restore();
+  }
+
+  // ---------------- Heart Trail ----------------
+  const heartTrail = [];
+  let heartSpawnTimer = 0;
+
+  function updateHeartTrail(){
+    const moving = (input.left || input.right) && player.onGround;
+    heartSpawnTimer++;
+    if (moving && heartSpawnTimer > 7){
+      heartSpawnTimer = 0;
+      heartTrail.push({
+        x: player.x + player.w/2 - player.facing*10,
+        y: player.y + player.h - 6,
+        vy: -0.6,
+        vx: -player.facing * 0.4,
+        life: 1,
+        size: 5 + Math.random()*3,
+        wobble: Math.random()*Math.PI*2
+      });
+    }
+    for (let i = heartTrail.length - 1; i >= 0; i--){
+      const h = heartTrail[i];
+      h.y += h.vy;
+      h.x += h.vx + Math.sin(h.wobble + h.y*0.05)*0.15;
+      h.life -= 0.018;
+      if (h.life <= 0) heartTrail.splice(i,1);
+    }
+  }
+
+  function drawHeartTrail(){
+    for (const h of heartTrail){
+      const x = h.x - camX;
+      ctx.save();
+      ctx.globalAlpha = Math.max(0, h.life);
+      ctx.fillStyle = "#ff7fae";
+      drawHeart(x, h.y, h.size * h.life + h.size*0.3);
+      ctx.restore();
+    }
   }
 
   function draw(){
@@ -796,6 +874,7 @@
     drawPlatforms();
     drawSpikes();
     drawFlag();
+    drawHeartTrail();
     drawPlayer();
   }
 
